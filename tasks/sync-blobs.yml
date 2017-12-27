@@ -1,0 +1,16 @@
+---
+image_resource:
+  source:
+    repository: "dpb587/metalink-upgrader-pipeline"
+  type: "docker-image"
+inputs:
+- name: "repo"
+- name: "blob"
+outputs:
+- name: "repo"
+  path: "updated-repo"
+params:
+  blob: ~
+platform: "linux"
+run:
+  path: "/opt/metalink-upgrader-pipeline/bin/sync-blobs"

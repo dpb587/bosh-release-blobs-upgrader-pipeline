@@ -1,0 +1,18 @@
+---
+image_resource:
+  source:
+    repository: "dpb587/metalink-upgrader-pipeline"
+  type: "docker-image"
+inputs:
+  - name: "repo"
+outputs:
+  - name: "repo"
+    path: "updated-repo"
+params:
+  release_private_yml: ~
+  git_user_email: ~
+  git_user_name: ~
+  git_message: ~
+platform: "linux"
+run:
+  path: "/opt/metalink-upgrader-pipeline/bin/upload-blobs"

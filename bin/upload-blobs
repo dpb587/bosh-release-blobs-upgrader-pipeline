@@ -1,0 +1,48 @@
+#!/bin/bash
+
+set -eu
+
+task_dir=$PWD
+
+cp -rp repo/. updated-repo
+
+cd updated-repo/
+
+
+#
+# env
+#
+
+export GIT_COMMITTER_NAME="Concourse"
+export GIT_COMMITTER_EMAIL="concourse.ci@localhost"
+
+git config --global user.email "${git_user_email:-ci@localhost}"
+git config --global user.name "${git_user_name:-CI Bot}"
+
+
+#
+# upload-blobs
+#
+
+cat > config/private.yml <<EOF
+${release_private_yml:-}
+EOF
+
+bosh upload-blobs
+
+git add config/blobs.yml
+
+
+#
+# commit
+#
+
+if git diff --staged --exit-code --quiet ; then
+  # no changes pending
+  exit
+elif [ -e .git/COMMIT_MSG ] ; then
+  # use prepared commit message
+  git commit -F .git/COMMIT_MSG
+else
+  git commit -m "${git_message:-Update blobs}"
+fi
