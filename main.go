@@ -49,33 +49,12 @@ func main() {
 		panic(err)
 	}
 
-	repositoryPaths, err := filepath.Glob(filepath.Join(releaseDir, "config", "blobs", "*", "repository.yml"))
+	repositoryPaths, err := filepath.Glob(filepath.Join(releaseDir, "config", "blobs", "*", "resource.yml"))
 	if err != nil {
 		panic(err)
 	}
 
 	if len(repositoryPaths) > 0 {
-		{ // resource_type/metalink-repository
-			found := false
-
-			for _, resourceType := range pipeline.ResourceTypes {
-				if resourceType.Name == "metalink-repository" {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				pipeline.ResourceTypes = append(pipeline.ResourceTypes, atc.ResourceType{
-					Name: "metalink-repository",
-					Type: "docker-image",
-					Source: atc.Source{
-						"repository": "dpb587/metalink-repository-resource",
-					},
-				})
-			}
-		}
-
 		{ // resource/metalink-upgrader-pipeline
 			found := false
 
@@ -119,18 +98,15 @@ func main() {
 			panic(err)
 		}
 
-		var repository atc.Source
-		err = yaml.Unmarshal(repositoryBytes, &repository)
+		var resourceConfig atc.ResourceConfig
+		err = yaml.Unmarshal(repositoryBytes, &resourceConfig)
 		if err != nil {
 			panic(err)
 		}
 
-		pipeline.Resources = append(pipeline.Resources, atc.ResourceConfig{
-			Name:       fmt.Sprintf("%s-blob", repositoryName),
-			Type:       "metalink-repository",
-			CheckEvery: "3h",
-			Source:     repository,
-		})
+		resourceConfig.Name = fmt.Sprintf("%s-blob", repositoryName)
+
+		pipeline.Resources = append(pipeline.Resources, resourceConfig)
 
 		job := atc.JobConfig{
 			Name: fmt.Sprintf("update-%s-blob", repositoryName),
@@ -139,7 +115,7 @@ func main() {
 					Aggregate: &atc.PlanSequence{
 						atc.PlanConfig{
 							Get:      "blob",
-							Resource: fmt.Sprintf("%s-blob", repositoryName),
+							Resource: resourceConfig.Name,
 							Trigger:  true,
 						},
 						atc.PlanConfig{
