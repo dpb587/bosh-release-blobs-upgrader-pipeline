@@ -13,12 +13,26 @@ import (
 
 type extPipeline struct {
 	atc.Config `yaml:"-,inline"`
-	ExtConfig  extPipelineConfig `yaml:"metalink_upgrader_pipeline,omitempty"`
+
+	ExtConfig extPipelineConfig `yaml:"bosh_release_blobs_upgrader,omitempty"`
 }
 
 type extPipelineConfig struct {
-	AfterSyncBlobs   atc.PlanSequence `yaml:"after_sync_blobs"`
-	AfterUploadBlobs atc.PlanSequence `yaml:"after_upload_blobs"`
+	SerialGroups []string `yaml:"serial_groups"`
+
+	TrackFiles []string `yaml:"track_files"`
+
+	ResourceDefaults extPipelineResourceDefaultsConfig `yaml:"resource_defaults"`
+
+	BeforeUpload *atc.PlanConfig `yaml:"before_upload,omitempty"`
+	AfterUpload  *atc.PlanConfig `yaml:"after_upload,omitempty"`
+
+	OnFailure *atc.PlanConfig `yaml:"on_failure,omitempty"`
+	OnSuccess *atc.PlanConfig `yaml:"on_success,omitempty"`
+}
+
+type extPipelineResourceDefaultsConfig struct {
+	CheckEvery *string `yaml:"check_every"`
 }
 
 type repositoryConfig struct {
@@ -91,7 +105,7 @@ func main() {
 	}
 
 	for _, repositoryPath := range repositoryPaths {
-		repositoryName := filepath.Base(filepath.Dir(repositoryPath))
+		blobName := filepath.Base(filepath.Dir(repositoryPath))
 
 		repositoryBytes, err := ioutil.ReadFile(repositoryPath)
 		if err != nil {
@@ -104,12 +118,17 @@ func main() {
 			panic(err)
 		}
 
-		resourceConfig.Name = fmt.Sprintf("%s-blob", repositoryName)
+		resourceConfig.Name = fmt.Sprintf("%s-blob", blobName)
+
+		if pipeline.ExtConfig.ResourceDefaults.CheckEvery != nil {
+			resourceConfig.CheckEvery = *pipeline.ExtConfig.ResourceDefaults.CheckEvery
+		}
 
 		pipeline.Resources = append(pipeline.Resources, resourceConfig)
 
 		job := atc.JobConfig{
-			Name: fmt.Sprintf("update-%s-blob", repositoryName),
+			Name:         fmt.Sprintf("upgrade-%s-blob", blobName),
+			SerialGroups: pipeline.ExtConfig.SerialGroups,
 			Plan: atc.PlanSequence{
 				atc.PlanConfig{
 					Aggregate: &atc.PlanSequence{
@@ -130,15 +149,30 @@ func main() {
 					Task:           "sync-blobs",
 					TaskConfigPath: "metalink-upgrader-pipeline/tasks/sync-blobs.yml",
 					Params: atc.Params{
-						"blob": repositoryName,
+						"blob":        blobName,
+						"track_files": strings.Join(pipeline.ExtConfig.TrackFiles, " "),
 					},
 				},
 			},
+			Success: pipeline.ExtConfig.OnSuccess,
+			Failure: pipeline.ExtConfig.OnFailure,
 		}
 
-		job.Plan = append(job.Plan, interpolateBlob(pipeline.ExtConfig.AfterSyncBlobs, repositoryName)...)
+		if pipeline.ExtConfig.OnSuccess != nil {
+			j := interpolateBlob(*pipeline.ExtConfig.OnSuccess, blobName)
+			job.Success = &j
+		}
 
-		if len(pipeline.ExtConfig.AfterUploadBlobs) > 0 {
+		if pipeline.ExtConfig.OnFailure != nil {
+			j := interpolateBlob(*pipeline.ExtConfig.OnFailure, blobName)
+			job.Failure = &j
+		}
+
+		if pipeline.ExtConfig.BeforeUpload != nil {
+			job.Plan = append(job.Plan, interpolateBlob(*pipeline.ExtConfig.BeforeUpload, blobName))
+		}
+
+		if pipeline.ExtConfig.AfterUpload != nil {
 			job.Plan = append(
 				job.Plan,
 				atc.PlanConfig{
@@ -152,7 +186,7 @@ func main() {
 				},
 			)
 
-			job.Plan = append(job.Plan, interpolateBlob(pipeline.ExtConfig.AfterUploadBlobs, repositoryName)...)
+			job.Plan = append(job.Plan, interpolateBlob(*pipeline.ExtConfig.AfterUpload, blobName))
 		}
 
 		pipeline.Jobs = append(pipeline.Jobs, job)
@@ -175,7 +209,7 @@ func main() {
 	fmt.Printf("%s\n", newPipelineBytes)
 }
 
-func interpolateBlob(plan atc.PlanSequence, blob string) atc.PlanSequence {
+func interpolateBlob(plan atc.PlanConfig, blob string) atc.PlanConfig {
 	planBytes, err := yaml.Marshal(plan)
 	if err != nil {
 		panic(err)
@@ -183,9 +217,9 @@ func interpolateBlob(plan atc.PlanSequence, blob string) atc.PlanSequence {
 
 	planBytes = []byte(strings.Replace(string(planBytes), "((blob))", blob, -1))
 
-	var planInterpolated atc.PlanSequence
+	var planInterpolated atc.PlanConfig
 
-	err = yaml.Unmarshal(planBytes, &planInterpolated)
+	err = yaml.UnmarshalStrict(planBytes, &planInterpolated)
 	if err != nil {
 		panic(err)
 	}

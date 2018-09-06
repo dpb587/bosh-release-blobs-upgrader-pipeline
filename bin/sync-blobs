@@ -47,11 +47,29 @@ done
 
 
 #
-# import metalink
+# import extra tracked files
 #
 
-cp -p ../blob/.resource/metalink.meta4 "config/blobs/$blob/metalink.meta4"
+for file in ${track_files:-hopefullyanonexistantpath} ; do
+  if [ -e "../blob/$file" ]; then
+  filename=$( basename "$file" )
+    cp -p "../blob/$file" "config/blobs/$blob/$filename"
 
-git add "config/blobs/$blob/metalink.meta4"
+    git add "config/blobs/$blob/$filename"
+  fi
+done
 
-echo "blobs: Update $blob to $( cat ../blob/.resource/version )" > .git/COMMIT_MSG
+
+#
+# prepare commit message
+#
+
+version_suffix=
+
+if [ -e ../blob/.resource/version ]; then
+  version_suffix=" to $( cat ../blob/.resource/version )"
+elif [ -e ../blob/version ]; then
+  version_suffix=" to $( cat ../blob/version )"
+fi
+
+echo "blobs: Update $blob$version_suffix" > .git/COMMIT_MSG

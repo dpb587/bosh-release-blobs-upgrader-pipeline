@@ -2,8 +2,6 @@
 
 set -eu
 
-task_dir=$PWD
-
 cp -rp repo/. updated-repo
 
 cd updated-repo/

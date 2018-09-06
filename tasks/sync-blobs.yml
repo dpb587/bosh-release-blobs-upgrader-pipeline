@@ -11,6 +11,7 @@ outputs:
   path: "updated-repo"
 params:
   blob: ~
+  track_files: ~
 platform: "linux"
 run:
   path: "/opt/metalink-upgrader-pipeline/bin/sync-blobs"
