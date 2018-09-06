@@ -69,11 +69,11 @@ func main() {
 	}
 
 	if len(repositoryPaths) > 0 {
-		{ // resource/metalink-upgrader-pipeline
+		{ // resource/bosh-release-blobs-upgrader-pipeline
 			found := false
 
 			for _, resource := range pipeline.Resources {
-				if resource.Name == "metalink-upgrader-pipeline" {
+				if resource.Name == "bosh-release-blobs-upgrader-pipeline" {
 					found = true
 					break
 				}
@@ -81,10 +81,10 @@ func main() {
 
 			if !found {
 				pipeline.Resources = append(pipeline.Resources, atc.ResourceConfig{
-					Name: "metalink-upgrader-pipeline",
+					Name: "bosh-release-blobs-upgrader-pipeline",
 					Type: "git",
 					Source: atc.Source{
-						"uri": "https://github.com/dpb587/metalink-upgrader-pipeline.git",
+						"uri": "https://github.com/dpb587/bosh-release-blobs-upgrader-pipeline.git",
 					},
 				})
 			}
@@ -141,13 +141,13 @@ func main() {
 							Get: "repo",
 						},
 						atc.PlanConfig{
-							Get: "metalink-upgrader-pipeline",
+							Get: "bosh-release-blobs-upgrader-pipeline",
 						},
 					},
 				},
 				atc.PlanConfig{
 					Task:           "sync-blobs",
-					TaskConfigPath: "metalink-upgrader-pipeline/tasks/sync-blobs.yml",
+					TaskConfigPath: "bosh-release-blobs-upgrader-pipeline/tasks/sync-blobs.yml",
 					Params: atc.Params{
 						"blob":        blobName,
 						"track_files": strings.Join(pipeline.ExtConfig.TrackFiles, " "),
@@ -177,7 +177,7 @@ func main() {
 				job.Plan,
 				atc.PlanConfig{
 					Task:           "upload-blob",
-					TaskConfigPath: "metalink-upgrader-pipeline/tasks/upload-blobs.yml",
+					TaskConfigPath: "bosh-release-blobs-upgrader-pipeline/tasks/upload-blobs.yml",
 					Params: atc.Params{
 						"release_private_yml": "((release_private_yml))",
 						"git_user_email":      "((maintainer_email))",

@@ -1,7 +1,7 @@
 ---
 image_resource:
   source:
-    repository: "dpb587/metalink-upgrader-pipeline"
+    repository: "dpb587/bosh-release-blobs-upgrader-pipeline"
   type: "docker-image"
 inputs:
 - name: "repo"
@@ -14,4 +14,4 @@ params:
   track_files: ~
 platform: "linux"
 run:
-  path: "/opt/metalink-upgrader-pipeline/bin/sync-blobs"
+  path: "/opt/bosh-release-blobs-upgrader-pipeline/bin/sync-blobs"
