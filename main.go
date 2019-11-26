@@ -35,10 +35,6 @@ type extPipelineResourceDefaultsConfig struct {
 	CheckEvery *string `yaml:"check_every"`
 }
 
-type repositoryConfig struct {
-	Uri string `yaml:"uri"`
-}
-
 func main() {
 	var err error
 	var releaseDir string
